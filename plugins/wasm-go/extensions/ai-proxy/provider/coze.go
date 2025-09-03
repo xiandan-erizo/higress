@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/alibaba/higress/plugins/wasm-go/extensions/ai-proxy/util"
+	"github.com/xiandan-erizo/higress/plugins/wasm-go/extensions/ai-proxy/util"
 	"github.com/higress-group/wasm-go/pkg/wrapper"
 )
 

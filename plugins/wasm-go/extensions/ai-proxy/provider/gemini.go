@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alibaba/higress/plugins/wasm-go/extensions/ai-proxy/util"
+	"github.com/xiandan-erizo/higress/plugins/wasm-go/extensions/ai-proxy/util"
 	"github.com/google/uuid"
 	"github.com/higress-group/proxy-wasm-go-sdk/proxywasm"
 	"github.com/higress-group/proxy-wasm-go-sdk/proxywasm/types"
@@ -32,12 +32,47 @@ const (
 	geminiEmbeddingPath            = "batchEmbedContents"
 	geminiModelsPath               = "models"
 	geminiImageGenerationPath      = "predict"
+
+	// Default thinking budget values for different reasoning efforts
+	// These values match litellm's default configuration
+	defaultReasoningEffortDisableThinkingBudget = 0
+	defaultReasoningEffortLowThinkingBudget     = 1024
+	defaultReasoningEffortMediumThinkingBudget  = 2048
+	defaultReasoningEffortHighThinkingBudget    = 4096
 )
 
 var geminiThinkingModels = map[string]bool{
 	"gemini-2.5-pro":        true,
 	"gemini-2.5-flash":      true,
 	"gemini-2.5-flash-lite": true,
+}
+
+// mapReasoningEffortToThinkingConfig maps reasoning effort to gemini thinking configuration
+func mapReasoningEffortToThinkingConfig(reasoningEffort string) *geminiThinkingConfig {
+	switch reasoningEffort {
+	case "low":
+		return &geminiThinkingConfig{
+			ThinkingBudget:  defaultReasoningEffortLowThinkingBudget,
+			IncludeThoughts: true,
+		}
+	case "medium":
+		return &geminiThinkingConfig{
+			ThinkingBudget:  defaultReasoningEffortMediumThinkingBudget,
+			IncludeThoughts: true,
+		}
+	case "high":
+		return &geminiThinkingConfig{
+			ThinkingBudget:  defaultReasoningEffortHighThinkingBudget,
+			IncludeThoughts: true,
+		}
+	case "disable":
+		return &geminiThinkingConfig{
+			ThinkingBudget:  defaultReasoningEffortDisableThinkingBudget,
+			IncludeThoughts: false,
+		}
+	default:
+		return nil
+	}
 }
 
 type geminiProviderInitializer struct{}
@@ -345,7 +380,7 @@ type geminiChatSafetySetting struct {
 }
 
 type geminiThinkingConfig struct {
-	IncludeThoughts bool  `json:"includeThoughts,omitempty"`
+	IncludeThoughts bool  `json:"includeThoughts"`
 	ThinkingBudget  int64 `json:"thinkingBudget,omitempty"`
 }
 
@@ -433,10 +468,20 @@ func (g *geminiProvider) buildGeminiChatRequest(request *chatCompletionRequest) 
 		},
 	}
 
+	// Handle thinking configuration for thinking-capable models
 	if geminiThinkingModels[request.Model] {
-		geminiRequest.GenerationConfig.ThinkingConfig = &geminiThinkingConfig{
-			IncludeThoughts: true,
-			ThinkingBudget:  g.config.geminiThinkingBudget,
+		// Check if reasoning_effort is provided in the request
+		if request.ReasoningEffort != "" {
+			// Use reasoning_effort from request to configure thinking
+			if thinkingConfig := mapReasoningEffortToThinkingConfig(request.ReasoningEffort); thinkingConfig != nil {
+				geminiRequest.GenerationConfig.ThinkingConfig = thinkingConfig
+			}
+		} else {
+			// Fallback to provider configuration if no reasoning_effort specified
+			geminiRequest.GenerationConfig.ThinkingConfig = &geminiThinkingConfig{
+				IncludeThoughts: true,
+				ThinkingBudget:  g.config.geminiThinkingBudget,
+			}
 		}
 	}
 

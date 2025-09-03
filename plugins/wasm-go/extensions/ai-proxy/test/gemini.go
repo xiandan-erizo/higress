@@ -2,6 +2,7 @@ package test
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -102,6 +103,20 @@ var geminiApiVersionConfig = func() json.RawMessage {
 	return data
 }()
 
+// 测试配置：gemini reasoning_effort测试配置
+var geminiReasoningEffortConfig = func() json.RawMessage {
+	data, _ := json.Marshal(map[string]interface{}{
+		"provider": map[string]interface{}{
+			"type":      "gemini",
+			"apiTokens": []string{"sk-gemini-thinking"},
+			"modelMapping": map[string]string{
+				"*": "gemini-2.5-pro",
+			},
+		},
+	})
+	return data
+}()
+
 // 测试配置：gemini完整配置（包含所有特殊字段）
 var completeGeminiConfig = func() json.RawMessage {
 	data, _ := json.Marshal(map[string]interface{}{
@@ -183,6 +198,17 @@ func RunGeminiParseConfigTests(t *testing.T) {
 		// 测试gemini API版本配置解析
 		t.Run("gemini api version config", func(t *testing.T) {
 			host, status := test.NewTestHost(geminiApiVersionConfig)
+			defer host.Reset()
+			require.Equal(t, types.OnPluginStartStatusOK, status)
+
+			config, err := host.GetMatchConfig()
+			require.NoError(t, err)
+			require.NotNil(t, config)
+		})
+
+		// 测试gemini reasoning_effort配置解析
+		t.Run("gemini reasoning effort config", func(t *testing.T) {
+			host, status := test.NewTestHost(geminiReasoningEffortConfig)
 			defer host.Reset()
 			require.Equal(t, types.OnPluginStartStatusOK, status)
 
@@ -500,6 +526,72 @@ func RunGeminiOnHttpRequestBodyTests(t *testing.T) {
 				}
 			}
 			require.True(t, hasThinkingLogs, "Should have thinking mode processing logs")
+		})
+
+		// 测试gemini请求体处理（reasoning_effort参数）
+		t.Run("gemini reasoning effort request body", func(t *testing.T) {
+			host, status := test.NewTestHost(geminiReasoningEffortConfig)
+			defer host.Reset()
+			require.Equal(t, types.OnPluginStartStatusOK, status)
+
+			// 先设置请求头
+			host.CallOnHttpRequestHeaders([][2]string{
+				{":authority", "example.com"},
+				{":path", "/v1/chat/completions"},
+				{":method", "POST"},
+				{"Content-Type", "application/json"},
+			})
+
+			// 测试不同的reasoning_effort值
+			testCases := []struct {
+				name           string
+				reasoningEffort string
+				expectedBudget  int64
+				expectedThoughts bool
+			}{
+				{"low effort", "low", 1024, true},
+				{"medium effort", "medium", 2048, true},
+				{"high effort", "high", 4096, true},
+				{"disable effort", "disable", 0, false},
+			}
+
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					// 设置包含reasoning_effort的请求体
+					requestBody := fmt.Sprintf(`{"model":"gemini-2.5-pro","messages":[{"role":"user","content":"test"}],"reasoning_effort":"%s"}`, tc.reasoningEffort)
+					action := host.CallOnHttpRequestBody([]byte(requestBody))
+
+					require.Equal(t, types.ActionContinue, action)
+
+					// 验证reasoning_effort的请求体处理
+					processedBody := host.GetRequestBody()
+					require.NotNil(t, processedBody)
+
+					// 验证请求体被转换为gemini格式
+					require.Contains(t, string(processedBody), "contents", "Request should be converted to gemini format")
+					
+					if tc.expectedThoughts {
+						require.Contains(t, string(processedBody), "thinkingConfig", "Request should contain thinking configuration")
+						require.Contains(t, string(processedBody), fmt.Sprintf(`"thinkingBudget":%d`, tc.expectedBudget), "Request should contain correct thinking budget")
+						require.Contains(t, string(processedBody), `"includeThoughts":true`, "Request should include thoughts")
+					} else {
+						if strings.Contains(string(processedBody), "thinkingConfig") {
+							require.Contains(t, string(processedBody), `"includeThoughts":false`, "Request should not include thoughts when disabled")
+						}
+					}
+
+					// 检查处理日志
+					debugLogs := host.GetDebugLogs()
+					hasReasoningLogs := false
+					for _, log := range debugLogs {
+						if strings.Contains(log, "reasoning") || strings.Contains(log, "thinking") || strings.Contains(log, "gemini") {
+							hasReasoningLogs = true
+							break
+						}
+					}
+					require.True(t, hasReasoningLogs, "Should have reasoning effort processing logs")
+				})
+			}
 		})
 
 		// 测试gemini请求体处理（安全设置）

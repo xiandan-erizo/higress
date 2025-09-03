@@ -9,9 +9,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/alibaba/higress/plugins/wasm-go/extensions/ai-proxy/config"
-	"github.com/alibaba/higress/plugins/wasm-go/extensions/ai-proxy/provider"
-	"github.com/alibaba/higress/plugins/wasm-go/extensions/ai-proxy/util"
+	"github.com/xiandan-erizo/higress/plugins/wasm-go/extensions/ai-proxy/config"
+	"github.com/xiandan-erizo/higress/plugins/wasm-go/extensions/ai-proxy/provider"
+	"github.com/xiandan-erizo/higress/plugins/wasm-go/extensions/ai-proxy/util"
 
 	"github.com/higress-group/wasm-go/pkg/log"
 	"github.com/higress-group/wasm-go/pkg/wrapper"

@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/alibaba/higress/plugins/wasm-go/extensions/ai-proxy/provider"
+	"github.com/xiandan-erizo/higress/plugins/wasm-go/extensions/ai-proxy/provider"
 	"github.com/tidwall/gjson"
 )
 

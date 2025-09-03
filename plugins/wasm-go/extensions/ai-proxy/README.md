@@ -255,6 +255,7 @@ Gemini 所对应的 `type` 为 `gemini`。它特有的配置字段如下：
 | `geminiSafetySetting`  | map of string | 非必填   | -        | Gemini AI 内容过滤和安全级别设定。参考[Safety settings](https://ai.google.dev/gemini-api/docs/safety-settings) |
 | `apiVersion`           | string        | 非必填   | `v1beta` | 用于指定 API 的版本, 可选择 `v1` 或 `v1beta` 。 版本差异请参考[API versions explained](https://ai.google.dev/gemini-api/docs/api-versions)。 |
 | `geminiThinkingBudget` | number        | 非必填   | -        | gemini2.5系列的参数，0是不开启思考，-1动态调整，具体参数指可参考官网 |
+| `reasoning_effort`     | string        | 非必填   | -        | 控制Gemini思考模式的参数，支持 `low`、`medium`、`high`、`disable` 四个值。当设置时会自动配置对应的thinkingConfig |
 
 #### DeepL
 
@@ -881,6 +882,43 @@ provider:
   }
 }
 ```
+
+### 使用 Gemini 服务的 reasoning_effort 参数
+
+使用 Gemini 服务，并配置 reasoning_effort 参数来控制模型的思考深度。
+
+**配置信息**
+
+```yaml
+provider:
+  type: gemini
+  apiTokens:
+    - 'YOUR_GEMINI_API_TOKEN'
+  modelMapping:
+    '*': 'gemini-2.5-pro'
+```
+
+**请求示例（使用 reasoning_effort 参数）**
+
+```json
+{
+  "model": "gemini-2.5-pro",
+  "messages": [
+    {
+      "role": "user",
+      "content": "请详细分析一下人工智能的发展趋势"
+    }
+  ],
+  "reasoning_effort": "high",
+  "temperature": 0.7
+}
+```
+
+**reasoning_effort 参数说明：**
+- `low`: 低强度思考模式，适合简单问题（thinkingBudget: 1024）
+- `medium`: 中等强度思考模式，适合一般复杂问题（thinkingBudget: 2048）
+- `high`: 高强度思考模式，适合复杂问题（thinkingBudget: 4096）
+- `disable`: 禁用思考模式（thinkingBudget: 0）
 
 ### 使用 OpenAI 协议代理 Grok 服务
 

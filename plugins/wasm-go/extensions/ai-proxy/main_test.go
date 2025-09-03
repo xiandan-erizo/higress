@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	"github.com/alibaba/higress/plugins/wasm-go/extensions/ai-proxy/provider"
-	"github.com/alibaba/higress/plugins/wasm-go/extensions/ai-proxy/test"
+	"github.com/xiandan-erizo/higress/plugins/wasm-go/extensions/ai-proxy/provider"
+	"github.com/xiandan-erizo/higress/plugins/wasm-go/extensions/ai-proxy/test"
 )
 
 func Test_getApiName(t *testing.T) {
